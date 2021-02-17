@@ -1,4 +1,17 @@
 //! APIs for interacting with rpm-ostree client side.
+//! Currently, this only supports read-only introspection
+//! of system state.
+//!
+//! ```no_run
+//! # fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+//! let status = rpmostree_client::query_status()?;
+//! for deployment in status.deployments {
+//!     let booted_star = if deployment.booted { "* " } else { "" };
+//!     println!("{}Commit: {}", booted_star, deployment.checksum);
+//! }
+//! # Ok(())
+//! # }
+//! ```
 
 use anyhow::Context;
 use serde_derive::Deserialize;
