@@ -16,10 +16,13 @@
 use anyhow::Context;
 use serde_derive::Deserialize;
 use std::process::Command;
+use thiserror::Error;
 
 /// Our generic catchall fatal error, expected to be converted
 /// to a string to output to a terminal or logs.
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync + 'static>>;
+#[derive(Error, Debug)]
+#[error("{0}")]
+pub struct Error(String);
 
 /// Representation of the rpm-ostree client-side state; this
 /// can be parsed directly from the output of `rpm-ostree status --json`.
@@ -45,7 +48,7 @@ pub struct Deployment {
 }
 
 /// Gather a snapshot of the system status.
-pub fn query_status() -> Result<Status> {
+fn impl_query_status() -> anyhow::Result<Status> {
     // Retry on temporary activation failures, see
     // https://github.com/coreos/rpm-ostree/issues/2531
     let pause = std::time::Duration::from_secs(1);
@@ -65,13 +68,16 @@ pub fn query_status() -> Result<Status> {
     };
 
     if !cmd_res.status.success() {
-        return Err(format!(
+        anyhow::bail!(
             "running 'rpm-ostree status' failed: {}",
             String::from_utf8_lossy(&cmd_res.stderr)
         )
-        .into());
     }
 
     Ok(serde_json::from_slice(&cmd_res.stdout)
         .context("failed to parse 'rpm-ostree status' output")?)
+}
+
+pub fn query_status() -> Result<Status, Error> {
+    impl_query_status().map_err(|e| Error(e.to_string()))
 }
